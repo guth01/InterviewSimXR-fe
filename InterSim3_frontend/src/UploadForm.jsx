@@ -88,7 +88,7 @@ const UploadForm = ({ onCodeGenerated }) => {
             const response = await setupInterview({
                 job_role: jobRole,
                 job_description: `Position at ${companyName}: ${jobRole}`,
-                resume_pdf: base64PDF
+                resume_text: base64PDF
             });
             
             if (response && response.access_code) {
