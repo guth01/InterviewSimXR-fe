@@ -28,7 +28,12 @@ const UploadForm = ({ onCodeGenerated }) => {
         e.preventDefault();
         setIsDragging(false);
         if (e.dataTransfer.files && e.dataTransfer.files[0]) {
-            setFile(e.dataTransfer.files[0]);
+            const droppedFile = e.dataTransfer.files[0];
+            if (droppedFile.type !== 'application/pdf') {
+                alert('Please drop a PDF file only.');
+                return;
+            }
+            setFile(droppedFile);
         }
     };
 
@@ -45,6 +50,7 @@ const UploadForm = ({ onCodeGenerated }) => {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        
         if (!file || !companyName || !jobRole) {
             alert('Please fill out all fields and select a file.');
             return;
@@ -55,44 +61,47 @@ const UploadForm = ({ onCodeGenerated }) => {
             return;
         }
 
+        // Check file size (optional - adjust limit as needed)
+        const maxSize = 10 * 1024 * 1024; // 10MB
+        if (file.size > maxSize) {
+            alert('File size is too large. Please upload a PDF smaller than 10MB.');
+            return;
+        }
+
         setIsLoading(true);
         
         try {
-            // Read file as text using FileReader
+            // Convert PDF to base64
             const reader = new FileReader();
-            reader.onload = async (event) => {
-                try {
-                    const resumeText = event.target.result;
-                    
-                    // Call the setup interview API
-                    const response = await setupInterview(
-                        jobRole,
-                        `Position at ${companyName}: ${jobRole}`,
-                        resumeText
-                    );
-                    
-                    if (response && response.access_code) {
-                        onCodeGenerated(response.access_code);
-                        console.log('Setup successful:', response.message);
-                    }
-                } catch (error) {
-                    console.error('API call failed:', error);
-                    alert('Failed to setup interview. Please try again.');
-                } finally {
-                    setIsLoading(false);
-                }
-            };
+            const base64Promise = new Promise((resolve, reject) => {
+                reader.onload = () => {
+                    const base64String = reader.result.split(',')[1];
+                    resolve(base64String);
+                };
+                reader.onerror = reject;
+            });
             
-            reader.onerror = () => {
-                console.error('File reading failed');
-                alert('Failed to read the file. Please try again.');
-                setIsLoading(false);
-            };
+            reader.readAsDataURL(file);
+            const base64PDF = await base64Promise;
             
-            reader.readAsText(file);
+            // Call the setup interview API
+            const response = await setupInterview({
+                job_role: jobRole,
+                job_description: `Position at ${companyName}: ${jobRole}`,
+                resume_pdf: base64PDF
+            });
+            
+            if (response && response.access_code) {
+                onCodeGenerated(response.access_code);
+                console.log('Setup successful:', response.message);
+            } else {
+                throw new Error('Failed to generate interview code. Please try again.');
+            }
+            
         } catch (error) {
-            console.error('Upload failed:', error);
-            alert('File upload failed. Please try again.');
+            console.error('Process failed:', error);
+            alert(error.message || 'Failed to process the request. Please try again.');
+        } finally {
             setIsLoading(false);
         }
     };

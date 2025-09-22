@@ -1,15 +1,11 @@
 import { API_BASE_URL } from "../config";
 
 // Setup Interview API
-export async function setupInterview(jobRole, jobDescription, resumeText) {
+export async function setupInterview(data) {
   const response = await fetch(`${API_BASE_URL}/setup-interview`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      job_role: jobRole,
-      job_description: jobDescription,
-      resume_text: resumeText,
-    }),
+    body: JSON.stringify(data),
   });
 
   if (!response.ok) {
